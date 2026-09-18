@@ -1,0 +1,3 @@
+@echo off
+echo Starting Android Pixel_4 Emulator GUI...
+start "" "%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe" -avd Pixel_4 -gpu host -no-audio
