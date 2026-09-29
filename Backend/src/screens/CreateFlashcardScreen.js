@@ -4,6 +4,7 @@ import {useDispatch, useSelector} from 'react-redux';
 
 import CustomButton from '../components/CustomButton';
 import ScreenBackground from '../components/ScreenBackground';
+import {createFlashcard} from '../services/flashcardApi';
 import {addFlashcard} from '../store/slices/flashcardSlice';
 
 const difficulties = ['Easy', 'Medium', 'Hard'];
@@ -17,13 +18,28 @@ export default function CreateFlashcardScreen({goToHome, goToStudy}) {
   const [answer, setAnswer] = useState('');
   const [difficulty, setDifficulty] = useState('Easy');
 
-  const saveFlashcard = () => {
+  const saveFlashcard = async () => {
     if (!subject.trim() || !question.trim() || !answer.trim()) {
       Alert.alert('Complete your flashcard', 'Please add a subject, question, and answer.');
       return;
     }
-    dispatch(addFlashcard({id: `custom-${Date.now()}`, deckId: selectedDeckId, subject: subject.trim(), question: question.trim(), answer: answer.trim(), difficulty}));
-    goToStudy();
+
+    try {
+      const createdCard = await createFlashcard({
+        subject: subject.trim(),
+        question: question.trim(),
+        answer: answer.trim(),
+        difficulty,
+      });
+
+      dispatch(addFlashcard({
+        ...createdCard,
+        deckId: selectedDeckId,
+      }));
+      goToStudy();
+    } catch (error) {
+      Alert.alert('Save failed', error.message || 'Unable to create flashcard right now.');
+    }
   };
 
   return (

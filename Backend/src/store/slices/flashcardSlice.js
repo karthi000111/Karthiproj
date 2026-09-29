@@ -134,6 +134,12 @@ const flashcardSlice = createSlice({
     addFlashcard: (state, action) => {
       state.items.push(action.payload);
     },
+    removeFlashcard: (state, action) => {
+      const flashcardId = String(action.payload);
+      state.items = state.items.filter(card => String(card.id) !== flashcardId);
+      state.completedIds = state.completedIds.filter(id => String(id) !== flashcardId);
+      state.favouriteIds = state.favouriteIds.filter(id => String(id) !== flashcardId);
+    },
     addDeck: (state, action) => {
       state.decks.push(action.payload);
     },
@@ -158,5 +164,5 @@ const flashcardSlice = createSlice({
   },
 });
 
-export const {addDeck, addFlashcard, hydrateFlashcards, markCompleted, recordReview, selectDeck, toggleFavourite} = flashcardSlice.actions;
+export const {addDeck, addFlashcard, hydrateFlashcards, markCompleted, recordReview, removeFlashcard, selectDeck, toggleFavourite} = flashcardSlice.actions;
 export default flashcardSlice.reducer;

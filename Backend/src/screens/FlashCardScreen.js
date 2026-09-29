@@ -1,14 +1,15 @@
-import React, {useEffect, useRef} from 'react';
-import {Animated, Easing, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {Alert, Animated, Easing, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 
 import CustomButton from '../components/CustomButton';
 import NavigationBar from '../components/NavigationBar';
 import ScreenBackground from '../components/ScreenBackground';
 import {useFlashcardStudy} from '../contexts/FlashcardContext';
-import {markCompleted, toggleFavourite} from '../store/slices/flashcardSlice';
-import {recordCompletion} from '../store/slices/progressSlice';
 import {useTheme} from '../contexts/ThemeContext';
+import {deleteFlashcard} from '../services/flashcardApi';
+import {markCompleted, removeFlashcard, toggleFavourite} from '../store/slices/flashcardSlice';
+import {recordCompletion} from '../store/slices/progressSlice';
 
 export default function FlashcardScreen({activeScreen, goToScreen}) {
   const dispatch = useDispatch();
@@ -20,6 +21,7 @@ export default function FlashcardScreen({activeScreen, goToScreen}) {
   const {changeQuestion, currentQuestion, setCurrentQuestion, setShowAnswer, showAnswer} = useFlashcardStudy();
   const {theme} = useTheme();
   const flipAnimation = useRef(new Animated.Value(0)).current;
+  const [isDeleting, setIsDeleting] = useState(false);
   const card = flashcards[currentQuestion];
 
   useEffect(() => {
@@ -59,6 +61,22 @@ export default function FlashcardScreen({activeScreen, goToScreen}) {
   const answerRotation = flipAnimation.interpolate({inputRange: [0, 1], outputRange: ['180deg', '360deg']});
   const isFavourite = favouriteIds.includes(card.id);
   const isCompleted = completedIds.includes(card.id);
+
+  const handleDeleteCard = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteFlashcard(card.id);
+      dispatch(removeFlashcard(card.id));
+      if (currentQuestion >= flashcards.length - 1) {
+        setCurrentQuestion(Math.max(0, flashcards.length - 2));
+      }
+      Alert.alert('Deleted', 'The flashcard was removed from the deck.');
+    } catch (error) {
+      Alert.alert('Delete failed', error.message || 'Unable to delete flashcard right now.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <ScreenBackground>
@@ -106,6 +124,9 @@ export default function FlashcardScreen({activeScreen, goToScreen}) {
           <TouchableOpacity disabled={currentQuestion === 0} onPress={() => moveQuestion(-1)} style={[styles.controlButton, currentQuestion === 0 && styles.disabledButton]}><Text style={styles.arrow}>‹</Text><Text style={styles.controlText}>Previous</Text></TouchableOpacity>
           <TouchableOpacity disabled={currentQuestion === flashcards.length - 1} onPress={() => moveQuestion(1)} style={[styles.controlButton, currentQuestion === flashcards.length - 1 && styles.disabledButton]}><Text style={styles.controlText}>Next</Text><Text style={styles.arrow}>›</Text></TouchableOpacity>
         </View>
+        <TouchableOpacity onPress={handleDeleteCard} disabled={isDeleting} style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}>
+          <Text style={styles.deleteButtonText}>{isDeleting ? 'Deleting...' : 'Delete Card'}</Text>
+        </TouchableOpacity>
       </View>
       <NavigationBar activeScreen={activeScreen} onNavigate={goToScreen} />
     </ScreenBackground>
@@ -121,5 +142,5 @@ const styles = StyleSheet.create({
   questionCard: {backgroundColor: '#FFFFFF', borderColor: '#E4E1F6', borderWidth: 1}, answerCard: {backgroundColor: '#EDE9FF'}, cardTopRow: {alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', position: 'absolute', top: 22, width: '100%'}, sideLabel: {color: '#5F42E8', fontSize: 11, fontWeight: 'bold', letterSpacing: 1.6}, cardIndex: {color: '#98A2B3', fontSize: 12, fontWeight: 'bold'}, subjectPill: {backgroundColor: '#F1EEFF', borderRadius: 20, marginBottom: 18, paddingHorizontal: 13, paddingVertical: 7}, subject: {color: '#5F42E8', fontSize: 13, fontWeight: '700'},
   cardText: {color: '#172B4D', fontSize: 21, fontWeight: '800', lineHeight: 29, textAlign: 'center'}, hint: {color: '#667085', fontSize: 13, marginTop: 20, textAlign: 'center'},
   actionRow: {flexDirection: 'row', gap: 10, marginBottom: 12, width: '100%'}, secondaryAction: {alignItems: 'center', backgroundColor: '#FFFFFFCC', borderColor: '#E4E1F6', borderRadius: 13, borderWidth: 1, flex: 1, flexDirection: 'row', justifyContent: 'center', minHeight: 48, paddingHorizontal: 8}, activeSecondaryAction: {backgroundColor: '#EDE9FF', borderColor: '#5F42E8'}, secondaryActionIcon: {color: '#667085', fontSize: 20, marginRight: 7}, secondaryActionText: {color: '#475467', fontSize: 12, fontWeight: '700'}, activeActionText: {color: '#5F42E8'},
-  controls: {flexDirection: 'row', justifyContent: 'space-between', width: '100%'}, controlButton: {alignItems: 'center', backgroundColor: '#FFFFFFCC', borderColor: '#D8D2F5', borderRadius: 13, borderWidth: 1, flexDirection: 'row', justifyContent: 'center', minHeight: 48, paddingHorizontal: 16, width: '47%'}, disabledButton: {borderColor: '#D0D5DD', opacity: 0.45}, controlText: {color: '#5F42E8', fontSize: 14, fontWeight: '800'}, arrow: {color: '#5F42E8', fontSize: 26, lineHeight: 22, marginHorizontal: 5},
+  controls: {flexDirection: 'row', justifyContent: 'space-between', width: '100%'}, controlButton: {alignItems: 'center', backgroundColor: '#FFFFFFCC', borderColor: '#D8D2F5', borderRadius: 13, borderWidth: 1, flexDirection: 'row', justifyContent: 'center', minHeight: 48, paddingHorizontal: 16, width: '47%'}, disabledButton: {borderColor: '#D0D5DD', opacity: 0.45}, controlText: {color: '#5F42E8', fontSize: 14, fontWeight: '800'}, arrow: {color: '#5F42E8', fontSize: 26, lineHeight: 22, marginHorizontal: 5}, deleteButton: {alignItems: 'center', backgroundColor: '#FDE8E8', borderColor: '#F7B7B7', borderRadius: 12, borderWidth: 1, marginTop: 12, paddingVertical: 12, width: '100%'}, deleteButtonDisabled: {opacity: 0.7}, deleteButtonText: {color: '#B42318', fontSize: 14, fontWeight: '800'},
 });

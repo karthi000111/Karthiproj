@@ -20,7 +20,7 @@ export default function useFlashcardsApi() {
       const cards = await fetchFlashcards();
       setFlashcards(cards);
     } catch (requestError) {
-      setError(requestError.message || 'Unable to load flashcards.');
+      setError(requestError.message || 'Unable to load flashcards right now. Please try again.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

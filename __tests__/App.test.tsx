@@ -60,3 +60,25 @@ test('includes the Java, Computer Networks, and Operating System study decks', (
   expect(state.items.some(card => card.deckId === 'computer-networks' && card.subject === 'OSI Model')).toBe(true);
   expect(state.items.some(card => card.deckId === 'operating-system' && card.subject === 'Processes')).toBe(true);
 });
+
+test('maps JSONPlaceholder posts into flashcards with question and answer fields', async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => [
+      {id: 1, title: 'What is REST?', body: 'REST is an architectural style for web APIs.'},
+    ],
+  });
+
+  const {fetchFlashcards} = require('../Backend/src/services/flashcardApi');
+  const cards = await fetchFlashcards();
+
+  expect(cards).toEqual([
+    {
+      id: 1,
+      subject: 'REST API',
+      question: 'What is REST?',
+      answer: 'REST is an architectural style for web APIs.',
+      difficulty: 'General',
+    },
+  ]);
+});

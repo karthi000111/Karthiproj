@@ -1,44 +1,77 @@
-const FLASHCARDS_URL =
-  'https://opentdb.com/api.php?amount=10&type=multiple';
+import {Platform} from 'react-native';
 
-const namedEntities = {
-  '&amp;': '&',
-  '&apos;': "'",
-  '&quot;': '"',
-  '&lt;': '<',
-  '&gt;': '>',
-  '&#039;': "'",
-};
+const API_BASE_URL =
+  Platform.OS === 'android' ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api';
 
-function decodeHtml(value) {
-  return value
-    .replace(/&(amp|apos|quot|lt|gt);|&#039;/g, entity => namedEntities[entity])
-    .replace(/&#(x[\da-f]+|\d+);/gi, (_, code) => {
-      const codePoint = code.startsWith('x')
-        ? parseInt(code.slice(1), 16)
-        : parseInt(code, 10);
-      return String.fromCodePoint(codePoint);
-    });
+const FLASHCARDS_URL = `${API_BASE_URL}/flashcards`;
+
+async function handleJsonResponse(response, fallbackMessage) {
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(payload?.message || fallbackMessage);
+  }
+
+  return payload;
 }
 
 export async function fetchFlashcards() {
-  const response = await fetch(FLASHCARDS_URL);
+  try {
+    const response = await fetch(FLASHCARDS_URL);
+    const payload = await handleJsonResponse(response, 'Unable to load flashcards right now. Please try again.');
 
-  if (!response.ok) {
-    throw new Error(`Flashcards request failed with status ${response.status}.`);
+    if (!Array.isArray(payload)) {
+      throw new Error('The flashcards service returned an invalid response.');
+    }
+
+    return payload.map(card => ({
+      id: card.id,
+      subject: card.subject || 'General',
+      question: card.question || 'Untitled question',
+      answer: card.answer || 'No answer available.',
+      difficulty: card.difficulty || 'General',
+    }));
+  } catch (error) {
+    throw new Error(error.message || 'Unable to load flashcards right now. Please try again.');
   }
+}
 
-  const payload = await response.json();
+export async function createFlashcard(cardData) {
+  try {
+    const response = await fetch(FLASHCARDS_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(cardData),
+    });
 
-  if (payload.response_code !== 0 || !Array.isArray(payload.results)) {
-    throw new Error('The flashcards service returned an invalid response.');
+    return await handleJsonResponse(response, 'Unable to create flashcard right now.');
+  } catch (error) {
+    throw new Error(error.message || 'Unable to create flashcard right now.');
   }
+}
 
-  return payload.results.map((card, index) => ({
-    id: `${card.category}-${card.question}-${index}`,
-    subject: decodeHtml(card.category),
-    question: decodeHtml(card.question),
-    answer: decodeHtml(card.correct_answer),
-    difficulty: card.difficulty.charAt(0).toUpperCase() + card.difficulty.slice(1),
-  }));
+export async function updateFlashcard(id, cardData) {
+  try {
+    const response = await fetch(`${FLASHCARDS_URL}/${id}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(cardData),
+    });
+
+    return await handleJsonResponse(response, 'Unable to update flashcard right now.');
+  } catch (error) {
+    throw new Error(error.message || 'Unable to update flashcard right now.');
+  }
+}
+
+export async function deleteFlashcard(id) {
+  try {
+    const response = await fetch(`${FLASHCARDS_URL}/${id}`, {
+      method: 'DELETE',
+    });
+
+    return await handleJsonResponse(response, 'Unable to delete flashcard right now.');
+  } catch (error) {
+    throw new Error(error.message || 'Unable to delete flashcard right now.');
+  }
 }
