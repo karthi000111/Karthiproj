@@ -26,6 +26,7 @@ export default function CreateFlashcardScreen({goToHome, goToStudy}) {
 
     try {
       const createdCard = await createFlashcard({
+        deckId: selectedDeckId,
         subject: subject.trim(),
         question: question.trim(),
         answer: answer.trim(),
@@ -34,7 +35,7 @@ export default function CreateFlashcardScreen({goToHome, goToStudy}) {
 
       dispatch(addFlashcard({
         ...createdCard,
-        deckId: selectedDeckId,
+        persisted: true,
       }));
       goToStudy();
     } catch (error) {

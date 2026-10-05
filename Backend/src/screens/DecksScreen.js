@@ -4,6 +4,7 @@ import {useDispatch, useSelector} from 'react-redux';
 
 import NavigationBar from '../components/NavigationBar';
 import ScreenBackground from '../components/ScreenBackground';
+import {createDeck as createDeckRequest} from '../services/flashcardApi';
 import {addDeck, selectDeck} from '../store/slices/flashcardSlice';
 
 export default function DecksScreen({activeScreen, goToScreen}) {
@@ -19,18 +20,25 @@ export default function DecksScreen({activeScreen, goToScreen}) {
     [cards],
   );
 
-  const createDeck = () => {
+  const createDeck = async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       Alert.alert('Name your set', 'Please give this study set a title.');
       return;
     }
-    const deck = {id: `deck-${Date.now()}`, title: trimmedTitle, description: description.trim() || 'A locally saved study set.'};
-    dispatch(addDeck(deck));
-    dispatch(selectDeck(deck.id));
-    setTitle('');
-    setDescription('');
-    setIsCreating(false);
+    try {
+      const deck = await createDeckRequest({
+        title: trimmedTitle,
+        description: description.trim() || 'A saved study set.',
+      });
+      dispatch(addDeck(deck));
+      dispatch(selectDeck(deck.id));
+      setTitle('');
+      setDescription('');
+      setIsCreating(false);
+    } catch (error) {
+      Alert.alert('Set not saved', error.message || 'Unable to save this set right now.');
+    }
   };
 
   const openDeck = deck => {
@@ -44,7 +52,7 @@ export default function DecksScreen({activeScreen, goToScreen}) {
       <View style={styles.page}>
         <Text style={styles.eyebrow}>YOUR LIBRARY</Text>
         <Text style={styles.title}>Study sets</Text>
-        <Text style={styles.subtitle}>Everything is saved only on this device.</Text>
+        <Text style={styles.subtitle}>Your custom sets are saved to your account.</Text>
         <TouchableOpacity style={styles.createButton} onPress={() => setIsCreating(!isCreating)}>
           <Text style={styles.createButtonText}>{isCreating ? 'Cancel' : '+ Create study set'}</Text>
         </TouchableOpacity>

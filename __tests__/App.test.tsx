@@ -3,25 +3,63 @@
  */
 
 import React from 'react';
-import {TextInput, TouchableOpacity} from 'react-native';
+import {Text, TextInput, TouchableOpacity} from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import App from '../App';
 import LoginScreen from '../Backend/src/screens/LoginScreen';
 import {ThemeProvider} from '../Backend/src/contexts/ThemeContext';
 import {UserProvider} from '../Backend/src/contexts/UserContext';
 import flashcardReducer from '../Backend/src/store/slices/flashcardSlice';
+import {getCurrentStudyStreak} from '../Backend/src/store/slices/progressSlice';
+import {loginAccount} from '../Backend/src/services/authApi';
+
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn().mockResolvedValue(null),
+  setItem: jest.fn().mockResolvedValue(undefined),
+  removeItem: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../Backend/src/services/authApi', () => ({
+  getCurrentUser: jest.fn(),
+  loginAccount: jest.fn(),
+  logoutAccount: jest.fn(),
+  registerAccount: jest.fn(),
+  updateAccount: jest.fn(),
+}));
 
 test('renders correctly', async () => {
-  await ReactTestRenderer.act(() => {
+  await ReactTestRenderer.act(async () => {
     ReactTestRenderer.create(<App />);
+    await Promise.resolve();
+    await Promise.resolve();
   });
-});
+}, 15000);
+
+test('opens registration from the Welcome screen', async () => {
+  let root;
+  await ReactTestRenderer.act(async () => {
+    root = ReactTestRenderer.create(<App />);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  const registerButton = root.root.findAllByType(TouchableOpacity).find(button =>
+    button.findAllByType(Text).some(text => text.props.children === 'Get Started (Register)'),
+  );
+
+  await ReactTestRenderer.act(() => registerButton.props.onPress());
+  expect(root.root.findAllByType(Text).some(text => text.props.children === 'Create Account')).toBe(true);
+}, 15000);
 
 test('navigates to home after a successful login', async () => {
   const goToHome = jest.fn();
+  loginAccount.mockResolvedValue({
+    token: 'test-token',
+    user: {name: 'User', email: 'user@example.com'},
+  });
 
   let root;
-  await ReactTestRenderer.act(() => {
+  await ReactTestRenderer.act(async () => {
     root = ReactTestRenderer.create(
       <ThemeProvider>
         <UserProvider>
@@ -33,6 +71,8 @@ test('navigates to home after a successful login', async () => {
         </UserProvider>
       </ThemeProvider>,
     );
+    await Promise.resolve();
+    await Promise.resolve();
   });
 
   const emailInput = root.root.findAllByType(TextInput)[0];
@@ -43,8 +83,8 @@ test('navigates to home after a successful login', async () => {
     passwordInput.props.onChangeText('password123');
   });
 
-  await ReactTestRenderer.act(() => {
-    root.root.findAllByType(TouchableOpacity)[0].props.onPress();
+  await ReactTestRenderer.act(async () => {
+    await root.root.findAllByType(TouchableOpacity)[0].props.onPress();
   });
 
   expect(goToHome).toHaveBeenCalledTimes(1);
@@ -61,11 +101,69 @@ test('includes the Java, Computer Networks, and Operating System study decks', (
   expect(state.items.some(card => card.deckId === 'operating-system' && card.subject === 'Processes')).toBe(true);
 });
 
+test('includes a separate 30-question Java scenario study set', () => {
+  const state = flashcardReducer(undefined, {type: '@@INIT'});
+  const scenarioCards = state.items.filter(card => card.deckId === 'java-scenarios');
+
+  expect(state.decks.some(deck => deck.id === 'java-scenarios' && deck.title === 'Java Scenario Questions')).toBe(true);
+  expect(scenarioCards).toHaveLength(30);
+  expect(scenarioCards[0]).toEqual(expect.objectContaining({
+    scenario: expect.any(String),
+    question: expect.any(String),
+    answer: expect.any(String),
+  }));
+});
+
+test('includes a separate 30-question Computer Networks scenario study set', () => {
+  const state = flashcardReducer(undefined, {type: '@@INIT'});
+  const scenarioCards = state.items.filter(card => card.deckId === 'computer-network-scenarios');
+
+  expect(state.decks.some(deck => deck.id === 'computer-network-scenarios' && deck.title === 'Computer Network Scenarios')).toBe(true);
+  expect(scenarioCards).toHaveLength(30);
+  expect(scenarioCards[0]).toEqual(expect.objectContaining({
+    scenario: expect.any(String),
+    question: expect.any(String),
+    answer: expect.any(String),
+  }));
+});
+
+test('includes a separate 30-question Operating System scenario study set', () => {
+  const state = flashcardReducer(undefined, {type: '@@INIT'});
+  const scenarioCards = state.items.filter(card => card.deckId === 'operating-system-scenarios');
+
+  expect(state.decks.some(deck => deck.id === 'operating-system-scenarios' && deck.title === 'Operating System Scenarios')).toBe(true);
+  expect(scenarioCards).toHaveLength(30);
+  expect(scenarioCards[0]).toEqual(expect.objectContaining({
+    scenario: expect.any(String),
+    question: expect.any(String),
+    answer: expect.any(String),
+  }));
+});
+
+test('computes the current study streak from consecutive UTC dates', () => {
+  const dateAtOffset = offset => {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() - offset);
+    return date.toISOString().slice(0, 10);
+  };
+
+  expect(getCurrentStudyStreak([dateAtOffset(0), dateAtOffset(1), dateAtOffset(2)])).toBe(3);
+  expect(getCurrentStudyStreak([dateAtOffset(1)])).toBe(1);
+  expect(getCurrentStudyStreak([dateAtOffset(2)])).toBe(0);
+});
+
 test('maps JSONPlaceholder posts into flashcards with question and answer fields', async () => {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
     json: async () => [
-      {id: 1, title: 'What is REST?', body: 'REST is an architectural style for web APIs.'},
+      {
+        id: 'card-1',
+        deckId: 'java',
+        subject: 'REST API',
+        question: 'What is REST?',
+        answer: 'REST is an architectural style for web APIs.',
+        difficulty: 'General',
+      },
     ],
   });
 
@@ -74,11 +172,13 @@ test('maps JSONPlaceholder posts into flashcards with question and answer fields
 
   expect(cards).toEqual([
     {
-      id: 1,
+      id: 'card-1',
       subject: 'REST API',
+      deckId: 'java',
       question: 'What is REST?',
       answer: 'REST is an architectural style for web APIs.',
       difficulty: 'General',
+      persisted: true,
     },
   ]);
 });

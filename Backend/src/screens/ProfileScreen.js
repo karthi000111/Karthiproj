@@ -8,6 +8,7 @@ import ScreenBackground from '../components/ScreenBackground';
 import {useTheme} from '../contexts/ThemeContext';
 import {useUser} from '../contexts/UserContext';
 import {javaInterviewQuestions} from '../data/javaInterviewQuestions';
+import {getCurrentStudyStreak} from '../store/slices/progressSlice';
 
 export default function ProfileScreen({activeScreen, goToScreen, goToWelcome}) {
   const {user} = useUser();
@@ -15,6 +16,7 @@ export default function ProfileScreen({activeScreen, goToScreen, goToWelcome}) {
   const allCards = useSelector(state => state.flashcards.items);
   const favouriteIds = useSelector(state => state.flashcards.favouriteIds);
   const completedIds = useSelector(state => state.flashcards.completedIds);
+  const activeDates = useSelector(state => state.progress.activeDates);
   const favouriteCards = useMemo(
     () => allCards.filter(card => favouriteIds.includes(card.id)),
     [allCards, favouriteIds],
@@ -35,6 +37,7 @@ export default function ProfileScreen({activeScreen, goToScreen, goToWelcome}) {
   const javaProgress = javaCards.length ? Math.round((javaCompleted / javaCards.length) * 100) : 0;
   const totalCompleted = completedIds.length;
   const totalQuestions = allCards.length;
+  const studyStreak = getCurrentStudyStreak(activeDates);
 
   const [rapidIndex, setRapidIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(20);
@@ -137,7 +140,7 @@ export default function ProfileScreen({activeScreen, goToScreen, goToWelcome}) {
               </View>
               <View style={styles.divider} />
               <View style={styles.stat}>
-                <Text style={styles.statValue}>7</Text>
+                <Text style={styles.statValue}>{studyStreak}</Text>
                 <Text style={styles.statLabel}>DAY STREAK</Text>
               </View>
             </View>

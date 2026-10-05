@@ -1,4 +1,5 @@
 import React, {useMemo, useState} from 'react';
+import {useSelector} from 'react-redux';
 
 import {
   ActivityIndicator,
@@ -16,12 +17,17 @@ import ScreenBackground from '../components/ScreenBackground';
 import {useTheme} from '../contexts/ThemeContext';
 import {useUser} from '../contexts/UserContext';
 import useFlashcardsApi from '../hooks/useFlashcardsApi';
+import {getCurrentStudyStreak} from '../store/slices/progressSlice';
 
 export default function HomeScreen({activeScreen, goToScreen}) {
   const [search, setSearch] = useState('');
   const {user} = useUser();
   const {theme} = useTheme();
   const {error, flashcards, isLoading, isRefreshing, refreshFlashcards} = useFlashcardsApi();
+  const completedCount = useSelector(state => state.flashcards.completedIds.length);
+  const totalCardCount = useSelector(state => state.flashcards.items.length);
+  const activeDates = useSelector(state => state.progress.activeDates);
+  const studyStreak = getCurrentStudyStreak(activeDates);
 
   const subjects = ['Java', 'Computer Networks', 'Operating System'];
   const displayName = user?.name || 'Karthi';
@@ -71,17 +77,17 @@ export default function HomeScreen({activeScreen, goToScreen}) {
             <Text style={styles.summaryTitle}>Your study snapshot</Text>
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>1</Text>
+                <Text style={styles.statValue}>{completedCount}</Text>
                 <Text style={styles.statLabel}>COMPLETED</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>{flashcards.length}</Text>
-                <Text style={styles.statLabel}>RECENT</Text>
+                <Text style={styles.statValue}>{totalCardCount}</Text>
+                <Text style={styles.statLabel}>TOTAL CARDS</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>7</Text>
+                <Text style={styles.statValue}>{studyStreak}</Text>
                 <Text style={styles.statLabel}>DAY STREAK</Text>
               </View>
             </View>

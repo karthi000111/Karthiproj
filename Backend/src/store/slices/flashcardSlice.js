@@ -1,4 +1,7 @@
 import {createSlice} from '@reduxjs/toolkit';
+import {computerNetworkScenarioQuestions} from '../../data/computerNetworkScenarioQuestions';
+import {javaScenarioQuestions} from '../../data/javaScenarioQuestions';
+import {operatingSystemScenarioQuestions} from '../../data/operatingSystemScenarioQuestions';
 
 const makeCardsForTopics = (deckId, topics) =>
   Object.entries(topics).flatMap(([subject, questions]) =>
@@ -17,8 +20,11 @@ const initialState = {
   favouriteIds: [],
   decks: [
     {id: 'java', title: 'Java', description: 'OOP, inheritance, and core Java concepts.'},
+    {id: 'java-scenarios', title: 'Java Scenario Questions', description: '30 case-based questions across core Java concepts.'},
     {id: 'computer-networks', title: 'Computer Networks', description: 'OSI, TCP/IP, routing, and networking fundamentals.'},
+    {id: 'computer-network-scenarios', title: 'Computer Network Scenarios', description: '30 case-based questions across Ethernet, routing, transport, and security.'},
     {id: 'operating-system', title: 'Operating System', description: 'Processes, threads, memory, and scheduling essentials.'},
+    {id: 'operating-system-scenarios', title: 'Operating System Scenarios', description: '30 case-based questions across scheduling, memory, concurrency, storage, and virtualization.'},
   ],
   selectedDeckId: 'java',
   cardProgress: {},
@@ -112,6 +118,33 @@ const initialState = {
         {question: 'What happens if a thread blocks on I/O?', answer: 'The OS can schedule another runnable thread while the blocked thread waits for the I/O operation to complete.', difficulty: 'Medium'},
       ],
     }),
+    javaScenarioQuestions.map(({concept, scenario, question, expectedAnswer}, index) => ({
+      id: `java-scenarios-${index + 1}`,
+      deckId: 'java-scenarios',
+      subject: concept,
+      scenario,
+      question,
+      answer: expectedAnswer,
+      difficulty: 'Scenario',
+    })),
+    computerNetworkScenarioQuestions.map(({concept, scenario, question, expectedAnswer}, index) => ({
+      id: `computer-network-scenarios-${index + 1}`,
+      deckId: 'computer-network-scenarios',
+      subject: concept,
+      scenario,
+      question,
+      answer: expectedAnswer,
+      difficulty: 'Scenario',
+    })),
+    operatingSystemScenarioQuestions.map(({concept, scenario, question, expectedAnswer}, index) => ({
+      id: `operating-system-scenarios-${index + 1}`,
+      deckId: 'operating-system-scenarios',
+      subject: concept,
+      scenario,
+      question,
+      answer: expectedAnswer,
+      difficulty: 'Scenario',
+    })),
   ),
 };
 
@@ -130,6 +163,33 @@ const flashcardSlice = createSlice({
       state.items.forEach(card => {
         if (!card.deckId) card.deckId = state.decks[0].id;
       });
+    },
+    hydrateAccountData: (state, action) => {
+      const {flashcards = [], decks = [], studyStates = []} = action.payload;
+      state.items = state.items.filter(card => !card.persisted).concat(
+        flashcards.map(card => ({...card, persisted: true})),
+      );
+      state.decks = state.decks.filter(deck => !deck.custom).concat(
+        decks.map(deck => ({...deck, custom: true})),
+      );
+      state.cardProgress = Object.fromEntries(studyStates.map(item => [item.cardId, {
+        level: item.level || 0,
+        reviews: item.reviews || 0,
+        lastReviewed: item.lastReviewed || 0,
+      }]));
+      state.completedIds = studyStates.filter(item => item.completed).map(item => item.cardId);
+      state.favouriteIds = studyStates.filter(item => item.favourite).map(item => item.cardId);
+      if (!state.decks.some(deck => deck.id === state.selectedDeckId)) {
+        state.selectedDeckId = 'java';
+      }
+    },
+    clearAccountData: state => {
+      state.items = state.items.filter(card => !card.persisted);
+      state.decks = state.decks.filter(deck => !deck.custom);
+      state.cardProgress = {};
+      state.completedIds = [];
+      state.favouriteIds = [];
+      state.selectedDeckId = 'java';
     },
     addFlashcard: (state, action) => {
       state.items.push(action.payload);
@@ -164,5 +224,5 @@ const flashcardSlice = createSlice({
   },
 });
 
-export const {addDeck, addFlashcard, hydrateFlashcards, markCompleted, recordReview, removeFlashcard, selectDeck, toggleFavourite} = flashcardSlice.actions;
+export const {addDeck, addFlashcard, clearAccountData, hydrateAccountData, hydrateFlashcards, markCompleted, recordReview, removeFlashcard, selectDeck, toggleFavourite} = flashcardSlice.actions;
 export default flashcardSlice.reducer;

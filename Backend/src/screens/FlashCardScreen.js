@@ -7,7 +7,7 @@ import NavigationBar from '../components/NavigationBar';
 import ScreenBackground from '../components/ScreenBackground';
 import {useFlashcardStudy} from '../contexts/FlashcardContext';
 import {useTheme} from '../contexts/ThemeContext';
-import {deleteFlashcard} from '../services/flashcardApi';
+import {deleteFlashcard, saveStudyState} from '../services/flashcardApi';
 import {markCompleted, removeFlashcard, toggleFavourite} from '../store/slices/flashcardSlice';
 import {recordCompletion} from '../store/slices/progressSlice';
 
@@ -18,6 +18,7 @@ export default function FlashcardScreen({activeScreen, goToScreen}) {
   const flashcards = allFlashcards.filter(card => (card.deckId || 'starter') === selectedDeckId);
   const favouriteIds = useSelector(state => state.flashcards.favouriteIds);
   const completedIds = useSelector(state => state.flashcards.completedIds);
+  const cardProgress = useSelector(state => state.flashcards.cardProgress);
   const {changeQuestion, currentQuestion, setCurrentQuestion, setShowAnswer, showAnswer} = useFlashcardStudy();
   const {theme} = useTheme();
   const flipAnimation = useRef(new Animated.Value(0)).current;
@@ -78,6 +79,33 @@ export default function FlashcardScreen({activeScreen, goToScreen}) {
     }
   };
 
+  const toggleCardFavourite = () => {
+    const favourite = !isFavourite;
+    dispatch(toggleFavourite(card.id));
+    const previous = cardProgress[card.id] || {};
+    saveStudyState(card.id, {
+      level: previous.level || 0,
+      reviews: previous.reviews || 0,
+      lastReviewed: previous.lastReviewed || 0,
+      completed: isCompleted,
+      favourite,
+    }).catch(error => Alert.alert('Sync failed', error.message));
+  };
+
+  const completeCard = () => {
+    dispatch(markCompleted(card.id));
+    dispatch(recordCompletion(card.id));
+    const previous = cardProgress[card.id] || {};
+    saveStudyState(card.id, {
+      level: previous.level || 0,
+      reviews: previous.reviews || 0,
+      lastReviewed: previous.lastReviewed || 0,
+      completed: true,
+      favourite: isFavourite,
+      lastReviewed: Date.now(),
+    }).catch(error => Alert.alert('Sync failed', error.message));
+  };
+
   return (
     <ScreenBackground>
       <View style={styles.container}>
@@ -111,11 +139,11 @@ export default function FlashcardScreen({activeScreen, goToScreen}) {
         </View>
         <CustomButton title={showAnswer ? 'Show Question' : 'Show Answer'} onPress={flipCard} />
         <View style={styles.actionRow}>
-          <TouchableOpacity onPress={() => dispatch(toggleFavourite(card.id))} style={[styles.secondaryAction, isFavourite && styles.activeSecondaryAction]}>
+          <TouchableOpacity onPress={toggleCardFavourite} style={[styles.secondaryAction, isFavourite && styles.activeSecondaryAction]}>
             <Text style={[styles.secondaryActionIcon, isFavourite && styles.activeActionText]}>{isFavourite ? '★' : '☆'}</Text>
             <Text style={[styles.secondaryActionText, isFavourite && styles.activeActionText]}>Favourite</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { dispatch(markCompleted(card.id)); dispatch(recordCompletion(card.id)); }} style={[styles.secondaryAction, isCompleted && styles.activeSecondaryAction]}>
+          <TouchableOpacity onPress={completeCard} style={[styles.secondaryAction, isCompleted && styles.activeSecondaryAction]}>
             <Text style={[styles.secondaryActionIcon, isCompleted && styles.activeActionText]}>{isCompleted ? '✓' : '○'}</Text>
             <Text style={[styles.secondaryActionText, isCompleted && styles.activeActionText]}>{isCompleted ? 'Completed' : 'Mark complete'}</Text>
           </TouchableOpacity>
@@ -124,8 +152,8 @@ export default function FlashcardScreen({activeScreen, goToScreen}) {
           <TouchableOpacity disabled={currentQuestion === 0} onPress={() => moveQuestion(-1)} style={[styles.controlButton, currentQuestion === 0 && styles.disabledButton]}><Text style={styles.arrow}>‹</Text><Text style={styles.controlText}>Previous</Text></TouchableOpacity>
           <TouchableOpacity disabled={currentQuestion === flashcards.length - 1} onPress={() => moveQuestion(1)} style={[styles.controlButton, currentQuestion === flashcards.length - 1 && styles.disabledButton]}><Text style={styles.controlText}>Next</Text><Text style={styles.arrow}>›</Text></TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={handleDeleteCard} disabled={isDeleting} style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}>
-          <Text style={styles.deleteButtonText}>{isDeleting ? 'Deleting...' : 'Delete Card'}</Text>
+        <TouchableOpacity onPress={handleDeleteCard} disabled={!card.persisted || isDeleting} style={[styles.deleteButton, (!card.persisted || isDeleting) && styles.deleteButtonDisabled]}>
+          <Text style={styles.deleteButtonText}>{isDeleting ? 'Deleting...' : card.persisted ? 'Delete Card' : 'Built-in Card'}</Text>
         </TouchableOpacity>
       </View>
       <NavigationBar activeScreen={activeScreen} onNavigate={goToScreen} />

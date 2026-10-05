@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   Pressable,
   Switch,
+  Modal,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import {Picker} from '@react-native-picker/picker';
 import {useTheme} from '../contexts/ThemeContext';
@@ -30,7 +30,7 @@ const GENDERS = ['Male', 'Female', 'Other'];
 
 export default function RegisterScreen({goToLogin, goToHome, goToWelcome}) {
   const {theme, isDark} = useTheme();
-  const {setUser} = useUser();
+  const {register} = useUser();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -41,8 +41,10 @@ export default function RegisterScreen({goToLogin, goToHome, goToWelcome}) {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isPickerVisible, setIsPickerVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setErrorMessage('');
 
     if (!name.trim()) {
@@ -60,8 +62,8 @@ export default function RegisterScreen({goToLogin, goToHome, goToWelcome}) {
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters');
       return;
     }
 
@@ -75,20 +77,22 @@ export default function RegisterScreen({goToLogin, goToHome, goToWelcome}) {
       return;
     }
 
-    // Update global user context
-    setUser({
-      name: name.trim(),
-      email: email.trim(),
-      gender,
-      course,
-      notificationsEnabled,
-    });
-
-    Alert.alert(
-      'Registration Successful!',
-      `Welcome to Note2Flash, ${name}! Your account has been created.`,
-      [{text: 'Continue to Home', onPress: () => goToHome()}],
-    );
+    setIsSubmitting(true);
+    try {
+      await register({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        gender,
+        course,
+        notificationsEnabled,
+      });
+      goToHome();
+    } catch (error) {
+      setErrorMessage(error.message || 'Unable to create your account right now.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -142,7 +146,7 @@ export default function RegisterScreen({goToLogin, goToHome, goToWelcome}) {
           <Text style={[styles.label, {color: theme.text}]}>Password *</Text>
           <TextInput
             style={[styles.input, {color: theme.text, borderColor: isDark ? '#4A5D78' : '#D0D5DD'}]}
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters"
             placeholderTextColor="#98A2B3"
             value={password}
             onChangeText={setPassword}
@@ -288,8 +292,9 @@ export default function RegisterScreen({goToLogin, goToHome, goToWelcome}) {
           <TouchableOpacity
             style={styles.registerButton}
             onPress={handleRegister}
+            disabled={isSubmitting}
             activeOpacity={0.85}>
-            <Text style={styles.registerButtonText}>Create Account</Text>
+            <Text style={styles.registerButtonText}>{isSubmitting ? 'Creating account...' : 'Create Account'}</Text>
           </TouchableOpacity>
 
           {/* 10. Links to Login and Welcome */}

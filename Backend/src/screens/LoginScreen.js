@@ -14,19 +14,20 @@ import {useUser} from '../contexts/UserContext';
 
 export default function LoginScreen({goToHome, goToRegister, goToWelcome}) {
   const {theme, isDark} = useTheme();
-  const {user, setUser} = useUser();
+  const {login} = useUser();
 
-  const [email, setEmail] = useState(user?.email || '');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const clearFeedback = () => {
     setErrorMessage('');
     setSuccessMessage('');
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     clearFeedback();
     if (!email.trim()) {
       setErrorMessage('Please enter your email');
@@ -40,23 +41,22 @@ export default function LoginScreen({goToHome, goToRegister, goToWelcome}) {
       setErrorMessage('Please enter your password');
       return;
     }
-    if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters');
       return;
     }
 
-    if (user?.name) {
-      setUser({...user, email: email.trim()});
-    } else {
-      setUser({name: email.split('@')[0], email: email.trim()});
-    }
-
-    setEmail('');
-    setPassword('');
-    setSuccessMessage('Login successful!');
-
-    if (typeof goToHome === 'function') {
-      goToHome();
+    setIsSubmitting(true);
+    try {
+      await login({email: email.trim(), password});
+      setEmail('');
+      setPassword('');
+      setSuccessMessage('Login successful!');
+      if (typeof goToHome === 'function') goToHome();
+    } catch (error) {
+      setErrorMessage(error.message || 'Unable to sign in right now.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -120,8 +120,9 @@ export default function LoginScreen({goToHome, goToRegister, goToWelcome}) {
           <TouchableOpacity
             style={styles.button}
             onPress={handleLogin}
+            disabled={isSubmitting}
             activeOpacity={0.85}>
-            <Text style={styles.buttonText}>Log In</Text>
+            <Text style={styles.buttonText}>{isSubmitting ? 'Signing in...' : 'Log In'}</Text>
           </TouchableOpacity>
 
           {successMessage ? (
