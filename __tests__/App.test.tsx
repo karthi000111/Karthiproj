@@ -11,6 +11,7 @@ import {ThemeProvider} from '../Backend/src/contexts/ThemeContext';
 import {UserProvider} from '../Backend/src/contexts/UserContext';
 import flashcardReducer from '../Backend/src/store/slices/flashcardSlice';
 import {getCurrentStudyStreak} from '../Backend/src/store/slices/progressSlice';
+import {getSubjectTopicProgress} from '../Backend/src/screens/ProgressScreen';
 import {loginAccount} from '../Backend/src/services/authApi';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -150,6 +151,44 @@ test('computes the current study streak from consecutive UTC dates', () => {
   expect(getCurrentStudyStreak([dateAtOffset(0), dateAtOffset(1), dateAtOffset(2)])).toBe(3);
   expect(getCurrentStudyStreak([dateAtOffset(1)])).toBe(1);
   expect(getCurrentStudyStreak([dateAtOffset(2)])).toBe(0);
+});
+
+test('groups completed flashcards by subject deck and topic', () => {
+  const progress = getSubjectTopicProgress(
+    [
+      {id: 'java-1', deckId: 'java', subject: 'OOP Concepts'},
+      {id: 'java-2', deckId: 'java', subject: 'OOP Concepts'},
+      {id: 'java-3', deckId: 'java', subject: 'Inheritance'},
+      {id: 'net-1', deckId: 'computer-networks', subject: 'OSI Model'},
+    ],
+    ['java-1', 'net-1'],
+    [
+      {id: 'java', title: 'Java'},
+      {id: 'computer-networks', title: 'Computer Networks'},
+    ],
+  );
+
+  expect(progress).toEqual([
+    {
+      id: 'java',
+      title: 'Java',
+      completed: 1,
+      total: 3,
+      percentage: 33,
+      topics: [
+        {title: 'OOP Concepts', completed: 1, total: 2, percentage: 50},
+        {title: 'Inheritance', completed: 0, total: 1, percentage: 0},
+      ],
+    },
+    {
+      id: 'computer-networks',
+      title: 'Computer Networks',
+      completed: 1,
+      total: 1,
+      percentage: 100,
+      topics: [{title: 'OSI Model', completed: 1, total: 1, percentage: 100}],
+    },
+  ]);
 });
 
 test('maps JSONPlaceholder posts into flashcards with question and answer fields', async () => {

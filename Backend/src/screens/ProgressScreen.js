@@ -17,15 +17,65 @@ import {useTheme} from '../contexts/ThemeContext';
 import {getCurrentStudyStreak, resetProgress} from '../store/slices/progressSlice';
 import {saveStudyState} from '../services/flashcardApi';
 
+export function getSubjectTopicProgress(cards, completedIds, decks) {
+  const decksById = new Map(decks.map(deck => [String(deck.id), deck]));
+  const completedIdSet = new Set(completedIds.map(String));
+  const subjectProgress = new Map();
+
+  cards.forEach(card => {
+    const deckId = String(card.deckId || decks[0]?.id || 'default');
+    const deck = decksById.get(deckId);
+    let subject = subjectProgress.get(deckId);
+
+    if (!subject) {
+      subject = {
+        id: deckId,
+        title: deck?.title || deckId,
+        completed: 0,
+        total: 0,
+        topics: new Map(),
+      };
+      subjectProgress.set(deckId, subject);
+    }
+
+    const topicTitle = card.subject || 'General';
+    let topic = subject.topics.get(topicTitle);
+    if (!topic) {
+      topic = {title: topicTitle, completed: 0, total: 0};
+      subject.topics.set(topicTitle, topic);
+    }
+
+    const isCompleted = completedIdSet.has(String(card.id));
+    subject.total += 1;
+    topic.total += 1;
+    if (isCompleted) {
+      subject.completed += 1;
+      topic.completed += 1;
+    }
+  });
+
+  return [...subjectProgress.values()].map(subject => ({
+    ...subject,
+    percentage: Math.round((subject.completed / subject.total) * 100),
+    topics: [...subject.topics.values()].map(topic => ({
+      ...topic,
+      percentage: Math.round((topic.completed / topic.total) * 100),
+    })),
+  }));
+}
+
 export default function ProgressScreen({activeScreen, goToScreen}) {
   const dispatch = useDispatch();
   const completed = useSelector(state => state.progress.completedIds.length);
   const completedIds = useSelector(state => state.progress.completedIds);
-  const total = useSelector(state => state.flashcards.items.length);
+  const cards = useSelector(state => state.flashcards.items);
+  const decks = useSelector(state => state.flashcards.decks);
+  const total = cards.length;
   const activeDates = useSelector(state => state.progress.activeDates);
   const studyStreak = getCurrentStudyStreak(activeDates);
   const percentage = total ? Math.round((completed / total) * 100) : 0;
   const {theme} = useTheme();
+  const subjectProgress = getSubjectTopicProgress(cards, completedIds, decks);
 
   const handleResetProgress = () => {
     Alert.alert(
@@ -84,6 +134,46 @@ export default function ProgressScreen({activeScreen, goToScreen}) {
           <View style={styles.bar}>
             <View style={[styles.fill, {width: `${percentage}%`}]} />
           </View>
+
+          <View style={styles.breakdownHeader}>
+            <Text style={[styles.breakdownTitle, {color: theme.text}]}>Subject &amp; Topic Progress</Text>
+            <Text style={styles.breakdownSubtitle}>See how you’re progressing in each study area.</Text>
+          </View>
+
+          {subjectProgress.length ? (
+            subjectProgress.map(subject => (
+              <View key={subject.id} style={[styles.subjectCard, {backgroundColor: theme.card}]}>
+                <View style={styles.subjectHeader}>
+                  <Text style={[styles.subjectTitle, {color: theme.text}]}>{subject.title}</Text>
+                  <Text style={styles.subjectPercentage}>{subject.percentage}%</Text>
+                </View>
+                <Text style={styles.subjectCount}>
+                  {subject.completed} of {subject.total} flashcards completed
+                </Text>
+                <View style={styles.subjectBar}>
+                  <View style={[styles.subjectFill, {width: `${subject.percentage}%`}]} />
+                </View>
+
+                {subject.topics.map(topic => (
+                  <View key={topic.title} style={styles.topicRow}>
+                    <View style={styles.topicHeader}>
+                      <Text style={[styles.topicTitle, {color: theme.text}]}>{topic.title}</Text>
+                      <Text style={styles.topicCount}>
+                        {topic.completed}/{topic.total} · {topic.percentage}%
+                      </Text>
+                    </View>
+                    <View style={styles.topicBar}>
+                      <View style={[styles.topicFill, {width: `${topic.percentage}%`}]} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))
+          ) : (
+            <Text style={[styles.emptyBreakdown, {color: theme.text}]}>
+              Add flashcards to see progress by subject and topic.
+            </Text>
+          )}
 
           <View style={styles.actionButtons}>
             <CustomButton
@@ -164,6 +254,97 @@ const styles = StyleSheet.create({
     height: 15,
     backgroundColor: '#5F42E8',
     borderRadius: 10,
+  },
+
+  breakdownHeader: {
+    marginBottom: 14,
+    marginTop: 12,
+  },
+  breakdownTitle: {
+    fontSize: 21,
+    fontWeight: 'bold',
+  },
+  breakdownSubtitle: {
+    color: '#667085',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  subjectCard: {
+    borderRadius: 18,
+    elevation: 3,
+    marginBottom: 14,
+    padding: 18,
+  },
+  subjectHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  subjectTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: 'bold',
+    marginRight: 10,
+  },
+  subjectPercentage: {
+    color: '#5F42E8',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  subjectCount: {
+    color: '#667085',
+    fontSize: 13,
+    marginTop: 5,
+  },
+  subjectBar: {
+    backgroundColor: '#E4E7EC',
+    borderRadius: 5,
+    height: 8,
+    marginTop: 12,
+    overflow: 'hidden',
+  },
+  subjectFill: {
+    backgroundColor: '#5F42E8',
+    borderRadius: 5,
+    height: 8,
+  },
+  topicRow: {
+    borderTopColor: '#EAECF0',
+    borderTopWidth: 1,
+    marginTop: 14,
+    paddingTop: 13,
+  },
+  topicHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  topicTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  topicCount: {
+    color: '#667085',
+    fontSize: 12,
+  },
+  topicBar: {
+    backgroundColor: '#E4E7EC',
+    borderRadius: 4,
+    height: 6,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  topicFill: {
+    backgroundColor: '#21A67A',
+    borderRadius: 4,
+    height: 6,
+  },
+  emptyBreakdown: {
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: 'center',
   },
 
   actionButtons: {

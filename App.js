@@ -99,11 +99,23 @@ function AppContent() {
   }
 
   if (screen === 'login') {
-    return <LoginScreen goToHome={() => setScreen('home')} goToRegister={() => setScreen('register')} />;
+    return (
+      <LoginScreen
+        goToHome={() => setScreen('home')}
+        goToRegister={() => setScreen('register')}
+        goToWelcome={() => setScreen('welcome')}
+      />
+    );
   }
 
   if (screen === 'register') {
-    return <RegisterScreen goToLogin={() => setScreen('login')} goToHome={() => setScreen('home')} goToWelcome={() => setScreen('welcome')} />;
+    return (
+      <RegisterScreen
+        goToLogin={() => setScreen('login')}
+        goToHome={() => setScreen('home')}
+        goToWelcome={() => setScreen('welcome')}
+      />
+    );
   }
 
   return (

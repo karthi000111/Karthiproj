@@ -16,8 +16,8 @@ export default function LoginScreen({goToHome, goToRegister, goToWelcome}) {
   const {theme, isDark} = useTheme();
   const {login} = useUser();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('karthi@example.com');
+  const [password, setPassword] = useState('Password123!');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,13 +63,14 @@ export default function LoginScreen({goToHome, goToRegister, goToWelcome}) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[styles.container, {backgroundColor: theme.background}]}>
+      style={[styles.container, {backgroundColor: theme.background || '#F5F7FA'}]}>
       <ScrollView
+        style={{flex: 1}}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled">
-        <View style={[styles.card, {backgroundColor: theme.card}]}>
+        <View style={[styles.card, {backgroundColor: theme.card || '#FFFFFF'}]}>
           <Text style={styles.logo}>👋</Text>
-          <Text style={[styles.title, {color: theme.text}]}>Welcome Back</Text>
+          <Text style={[styles.title, {color: theme.text || '#172B4D'}]}>Welcome Back</Text>
           <Text style={styles.subtitle}>Login to Note2Flash</Text>
 
           {errorMessage ? (

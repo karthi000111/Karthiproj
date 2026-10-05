@@ -100,6 +100,7 @@ export default function RegisterScreen({goToLogin, goToHome, goToWelcome}) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, {backgroundColor: theme.background}]}>
       <ScrollView
+        style={{flex: 1}}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
