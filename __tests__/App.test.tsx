@@ -12,6 +12,7 @@ import {UserProvider} from '../Backend/src/contexts/UserContext';
 import flashcardReducer from '../Backend/src/store/slices/flashcardSlice';
 import {getCurrentStudyStreak} from '../Backend/src/store/slices/progressSlice';
 import {getSubjectTopicProgress} from '../Backend/src/screens/ProgressScreen';
+import {getNewlyCompletedSubject} from '../Backend/src/utils/subjectCompletion';
 import {loginAccount} from '../Backend/src/services/authApi';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -189,6 +190,32 @@ test('groups completed flashcards by subject deck and topic', () => {
       topics: [{title: 'OSI Model', completed: 1, total: 1, percentage: 100}],
     },
   ]);
+});
+
+test('identifies a subject only when its final flashcard is newly completed', () => {
+  const cards = [
+    {id: 'java-1', deckId: 'java'},
+    {id: 'java-2', deckId: 'java'},
+    {id: 'net-1', deckId: 'computer-networks'},
+    {id: 'net-2', deckId: 'computer-networks'},
+  ];
+  const decks = [
+    {id: 'java', title: 'Java'},
+    {id: 'computer-networks', title: 'Computer Networks'},
+  ];
+
+  expect(
+    getNewlyCompletedSubject(cards, ['java-1'], decks, cards[1]),
+  ).toBe('Java');
+  expect(
+    getNewlyCompletedSubject(cards, [], decks, cards[0]),
+  ).toBeNull();
+  expect(
+    getNewlyCompletedSubject(cards, ['java-1', 'java-2'], decks, cards[1]),
+  ).toBeNull();
+  expect(
+    getNewlyCompletedSubject(cards, ['java-1'], decks, cards[2]),
+  ).toBeNull();
 });
 
 test('maps JSONPlaceholder posts into flashcards with question and answer fields', async () => {

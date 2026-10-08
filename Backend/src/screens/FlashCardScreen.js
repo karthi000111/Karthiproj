@@ -10,11 +10,13 @@ import {useTheme} from '../contexts/ThemeContext';
 import {deleteFlashcard, saveStudyState} from '../services/flashcardApi';
 import {markCompleted, removeFlashcard, toggleFavourite} from '../store/slices/flashcardSlice';
 import {recordCompletion} from '../store/slices/progressSlice';
+import {getNewlyCompletedSubject} from '../utils/subjectCompletion';
 
-export default function FlashcardScreen({activeScreen, goToScreen}) {
+export default function FlashcardScreen({activeScreen, goToScreen, onSubjectCompleted}) {
   const dispatch = useDispatch();
   const selectedDeckId = useSelector(state => state.flashcards.selectedDeckId);
   const allFlashcards = useSelector(state => state.flashcards.items);
+  const decks = useSelector(state => state.flashcards.decks);
   const flashcards = allFlashcards.filter(card => (card.deckId || 'starter') === selectedDeckId);
   const favouriteIds = useSelector(state => state.flashcards.favouriteIds);
   const completedIds = useSelector(state => state.flashcards.completedIds);
@@ -93,13 +95,19 @@ export default function FlashcardScreen({activeScreen, goToScreen}) {
   };
 
   const completeCard = () => {
+    const completedSubject = getNewlyCompletedSubject(
+      allFlashcards,
+      completedIds,
+      decks,
+      card,
+    );
     dispatch(markCompleted(card.id));
     dispatch(recordCompletion(card.id));
+    if (completedSubject) onSubjectCompleted?.(completedSubject);
     const previous = cardProgress[card.id] || {};
     saveStudyState(card.id, {
       level: previous.level || 0,
       reviews: previous.reviews || 0,
-      lastReviewed: previous.lastReviewed || 0,
       completed: true,
       favourite: isFavourite,
       lastReviewed: Date.now(),

@@ -8,13 +8,15 @@ import ScreenBackground from '../components/ScreenBackground';
 import {saveStudyState} from '../services/flashcardApi';
 import {recordReview} from '../store/slices/flashcardSlice';
 import {recordCompletion, recordStudyActivity} from '../store/slices/progressSlice';
+import {getNewlyCompletedSubject} from '../utils/subjectCompletion';
 
-export default function LearnScreen({activeScreen, goToScreen}) {
+export default function LearnScreen({activeScreen, goToScreen, onSubjectCompleted}) {
   const dispatch = useDispatch();
   const [showAnswer, setShowAnswer] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const flipAnimation = React.useRef(new Animated.Value(0)).current;
   const cards = useSelector(state => state.flashcards.items);
+  const decks = useSelector(state => state.flashcards.decks);
   const selectedDeckId = useSelector(state => state.flashcards.selectedDeckId);
   const progress = useSelector(state => state.flashcards.cardProgress);
   const completedIds = useSelector(state => state.flashcards.completedIds);
@@ -34,6 +36,9 @@ export default function LearnScreen({activeScreen, goToScreen}) {
   const level = card ? (progress[card.id]?.level || 0) : 0;
 
   const rateCard = rating => {
+    const completedSubject = rating === 'gotIt'
+      ? getNewlyCompletedSubject(cards, completedIds, decks, card)
+      : null;
     const previous = progress[card.id] || {level: 0, reviews: 0, lastReviewed: 0};
     const levelChange = rating === 'gotIt' ? 1 : rating === 'hard' ? -1 : -2;
     const nextState = {
@@ -46,6 +51,7 @@ export default function LearnScreen({activeScreen, goToScreen}) {
     dispatch(recordReview({id: card.id, rating}));
     dispatch(recordStudyActivity());
     if (nextState.completed) dispatch(recordCompletion(card.id));
+    if (completedSubject) onSubjectCompleted?.(completedSubject);
     saveStudyState(card.id, nextState).catch(error => Alert.alert('Sync failed', error.message));
     flipAnimation.setValue(0);
     setShowAnswer(false);

@@ -16,6 +16,7 @@ import LearnScreen from './Backend/src/screens/LearnScreen';
 import CreateFlashcardScreen from './Backend/src/screens/CreateFlashcardScreen';
 import MatchScreen from './Backend/src/screens/MatchScreen';
 import ProfileScreen from './Backend/src/screens/ProfileScreen';
+import SubjectCompletionCelebration from './Backend/src/components/SubjectCompletionCelebration';
 import {store} from './Backend/src/store/store';
 import {fetchAccountSnapshot} from './Backend/src/services/accountApi';
 import {clearAccountData, hydrateAccountData} from './Backend/src/store/slices/flashcardSlice';
@@ -38,6 +39,7 @@ export default function App() {
 function AppContent() {
   const [screen, setScreen] = useState('welcome');
   const [isAccountReady, setIsAccountReady] = useState(false);
+  const [completedSubject, setCompletedSubject] = useState(null);
   const dispatch = useDispatch();
   const {token, isRestoringSession, logout} = useUser();
 
@@ -123,10 +125,20 @@ function AppContent() {
       <View style={styles.content}>
         {screen === 'home' && <HomeScreen activeScreen="home" goToScreen={goToScreen} />}
         {screen === 'flashcards' && (
-          <FlashcardScreen activeScreen="flashcard" goToScreen={goToScreen} />
+          <FlashcardScreen
+            activeScreen="flashcard"
+            goToScreen={goToScreen}
+            onSubjectCompleted={setCompletedSubject}
+          />
         )}
         {screen === 'decks' && <DecksScreen activeScreen="decks" goToScreen={goToScreen} />}
-        {screen === 'learn' && <LearnScreen activeScreen="decks" goToScreen={goToScreen} />}
+        {screen === 'learn' && (
+          <LearnScreen
+            activeScreen="decks"
+            goToScreen={goToScreen}
+            onSubjectCompleted={setCompletedSubject}
+          />
+        )}
         {screen === 'create' && (
           <CreateFlashcardScreen
             goToHome={() => setScreen('home')}
@@ -145,6 +157,10 @@ function AppContent() {
           />
         )}
       </View>
+      <SubjectCompletionCelebration
+        subject={completedSubject}
+        onDismiss={() => setCompletedSubject(null)}
+      />
     </View>
   );
 }
